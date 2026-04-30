@@ -16,18 +16,39 @@ export class PropertyService {
   async findAll(
     query: GetPropertiesQuery,
   ): Promise<PropertiesPaginatedResponse> {
+    const { cursor, limit } = query;
+    const hasCursor = cursor !== undefined;
+    const takeCount = limit + 1;
+
     const qb = this.buildQuery(query);
-    const [data, total] = await qb.getManyAndCount();
+    qb.take(takeCount);
+
+    if (hasCursor) {
+      qb.andWhere('property.id < :cursor', { cursor });
+    }
+
+    const data = await qb.getMany();
+
+    const hasMore = data.length > limit;
+    if (hasMore) {
+      data.pop();
+    }
+
+    const nextCursor =
+      hasMore && data.length > 0 ? data[data.length - 1].id : undefined;
 
     return {
       data,
-      meta: this.buildMeta(total, query.page, query.limit),
+      meta: {
+        hasMore,
+        nextCursor,
+        limit,
+      },
     };
   }
 
   private buildQuery(query: GetPropertiesQuery): SelectQueryBuilder<Property> {
-    const { operator = 'AND' as const, page, limit } = query;
-    const offset = (page - 1) * limit;
+    const { operator = 'AND' as const } = query;
 
     const qb = this.propertyRepo
       .createQueryBuilder('property')
@@ -47,15 +68,8 @@ export class PropertyService {
       operator,
     );
 
-    return qb.orderBy('property.price', 'DESC').skip(offset).take(limit);
-  }
-
-  private buildMeta(total: number, page: number, limit: number) {
-    return {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+    return qb
+      .orderBy('property.price', 'DESC')
+      .addOrderBy('property.id', 'DESC');
   }
 }
