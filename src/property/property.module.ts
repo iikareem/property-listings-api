@@ -8,6 +8,5 @@ import { PropertyController } from './property.controller';
   imports: [TypeOrmModule.forFeature([Property])],
   controllers: [PropertyController],
   providers: [PropertyService],
-  exports: [PropertyService],
 })
 export class PropertyModule {}
