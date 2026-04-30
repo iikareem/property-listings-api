@@ -15,16 +15,15 @@ export class PropertyResponse {
   updatedAt: Date;
 }
 
-export interface PaginationMeta {
-  total: number;
-  page: number;
+export interface CursorPaginationMeta {
+  hasMore: boolean;
+  nextCursor?: string;
   limit: number;
-  totalPages: number;
 }
 
 export interface PaginatedResponse<T> {
   data: T[];
-  meta: PaginationMeta;
+  meta: CursorPaginationMeta;
 }
 
 export type PropertiesPaginatedResponse = PaginatedResponse<Property>;
