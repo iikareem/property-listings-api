@@ -4,9 +4,9 @@ import {
   Min,
   IsString,
   IsNumber,
-  Max,
   IsBoolean,
   IsIn,
+  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -47,19 +47,16 @@ export class GetPropertiesQuery {
   isAvailable?: boolean;
 
   @IsOptional()
+  @IsUUID('7')
+  cursor?: string;
+
+  @IsOptional()
   @IsIn(['AND', 'OR'])
   operator?: 'AND' | 'OR' = 'AND';
 
   @IsOptional()
   @IsInt()
   @Min(1)
-  @Type(() => Number)
-  page: number = 1;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(100)
   @Type(() => Number)
   limit: number = 10;
 }
