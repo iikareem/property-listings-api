@@ -1,8 +1,9 @@
 import { SelectQueryBuilder } from 'typeorm';
 import { applyFilters } from '../../../src/property/filters.utils';
+import { Property } from '../../../src/property/entities/property.entity';
 
-function createMockQueryBuilder() {
-  const mockQb: Partial<SelectQueryBuilder<any>> = {
+function createMockQueryBuilder(): Partial<SelectQueryBuilder<Property>> {
+  return {
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
@@ -10,18 +11,17 @@ function createMockQueryBuilder() {
     take: jest.fn().mockReturnThis(),
     getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
   };
-  return mockQb;
 }
 
 describe('applyFilters', () => {
-  let mockQb: Partial<SelectQueryBuilder<any>>;
+  let mockQb: Partial<SelectQueryBuilder<Property>>;
 
   beforeEach(() => {
     mockQb = createMockQueryBuilder();
   });
 
   it('should not call andWhere when no filters are provided', () => {
-    applyFilters(mockQb as SelectQueryBuilder<any>, {}, 'AND');
+    applyFilters(mockQb as SelectQueryBuilder<Property>, {}, 'AND');
 
     expect(mockQb.andWhere).not.toHaveBeenCalled();
   });
@@ -33,14 +33,18 @@ describe('applyFilters', () => {
       maxPrice: null,
     };
 
-    applyFilters(mockQb as SelectQueryBuilder<any>, filters as any, 'AND');
+    applyFilters(
+      mockQb as SelectQueryBuilder<Property>,
+      filters as Record<string, unknown>,
+      'AND',
+    );
 
     expect(mockQb.andWhere).not.toHaveBeenCalled();
   });
 
   it('should apply single price filter with AND operator', () => {
     applyFilters(
-      mockQb as SelectQueryBuilder<any>,
+      mockQb as SelectQueryBuilder<Property>,
       { minPrice: 100000 },
       'AND',
     );
@@ -52,7 +56,11 @@ describe('applyFilters', () => {
   });
 
   it('should apply city filter with ILIKE', () => {
-    applyFilters(mockQb as SelectQueryBuilder<any>, { city: 'Houston' }, 'AND');
+    applyFilters(
+      mockQb as SelectQueryBuilder<Property>,
+      { city: 'Houston' },
+      'AND',
+    );
 
     expect(mockQb.andWhere).toHaveBeenCalledWith(
       '(property.city ILIKE :city)',
@@ -62,7 +70,7 @@ describe('applyFilters', () => {
 
   it('should apply multiple filters with AND operator', () => {
     applyFilters(
-      mockQb as SelectQueryBuilder<any>,
+      mockQb as SelectQueryBuilder<Property>,
       { minPrice: 100000, maxPrice: 500000, city: 'Houston' },
       'AND',
     );
@@ -75,7 +83,7 @@ describe('applyFilters', () => {
 
   it('should apply multiple filters with OR operator', () => {
     applyFilters(
-      mockQb as SelectQueryBuilder<any>,
+      mockQb as SelectQueryBuilder<Property>,
       { city: 'Houston', minBedrooms: 3 },
       'OR',
     );
@@ -88,7 +96,7 @@ describe('applyFilters', () => {
 
   it('should apply area range filters', () => {
     applyFilters(
-      mockQb as SelectQueryBuilder<any>,
+      mockQb as SelectQueryBuilder<Property>,
       { minAreaSqm: 50, maxAreaSqm: 200 },
       'AND',
     );
@@ -101,7 +109,7 @@ describe('applyFilters', () => {
 
   it('should apply isAvailable filter', () => {
     applyFilters(
-      mockQb as SelectQueryBuilder<any>,
+      mockQb as SelectQueryBuilder<Property>,
       { isAvailable: true },
       'AND',
     );
@@ -114,7 +122,7 @@ describe('applyFilters', () => {
 
   it('should apply all available filters together', () => {
     applyFilters(
-      mockQb as SelectQueryBuilder<any>,
+      mockQb as SelectQueryBuilder<Property>,
       {
         minPrice: 100000,
         maxPrice: 500000,
@@ -128,13 +136,17 @@ describe('applyFilters', () => {
     );
 
     expect(mockQb.andWhere).toHaveBeenCalledTimes(1);
-    const callArgs = (mockQb.andWhere as jest.Mock).mock.calls[0];
-    expect(callArgs[0]).toContain('property.price >= :minPrice');
-    expect(callArgs[0]).toContain('property.price <= :maxPrice');
-    expect(callArgs[0]).toContain('property.city ILIKE :city');
-    expect(callArgs[0]).toContain('property.bedrooms >= :minBedrooms');
-    expect(callArgs[0]).toContain('property.area_sqm >= :minAreaSqm');
-    expect(callArgs[0]).toContain('property.area_sqm <= :maxAreaSqm');
-    expect(callArgs[0]).toContain('property.is_available = :isAvailable');
+    const callArgs = (mockQb.andWhere as jest.Mock).mock.calls[0] as [
+      string,
+      Record<string, unknown>,
+    ];
+    const whereClause = callArgs[0];
+    expect(whereClause).toContain('property.price >= :minPrice');
+    expect(whereClause).toContain('property.price <= :maxPrice');
+    expect(whereClause).toContain('property.city ILIKE :city');
+    expect(whereClause).toContain('property.bedrooms >= :minBedrooms');
+    expect(whereClause).toContain('property.area_sqm >= :minAreaSqm');
+    expect(whereClause).toContain('property.area_sqm <= :maxAreaSqm');
+    expect(whereClause).toContain('property.is_available = :isAvailable');
   });
 });

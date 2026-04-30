@@ -1,25 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { PropertyService } from '../../../src/property/property.service';
 import { Property } from '../../../src/property/entities/property.entity';
-import { GetPropertiesQuery } from '../../../src/property/dtos/get-properties.dto';
 
 describe('PropertyService', () => {
   let service: PropertyService;
-  let repo: Repository<Property>;
 
-  const mockRepo = {
-    createQueryBuilder: jest.fn(),
-  };
-
-  const mockQb: any = {
+  const mockQb = {
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
-    skip: jest.fn().mockReturnThis(),
+    addOrderBy: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
-    getManyAndCount: jest.fn(),
+    getMany: jest.fn(),
+  };
+
+  const mockRepo = {
+    createQueryBuilder: jest.fn().mockReturnValue(mockQb),
   };
 
   beforeEach(async () => {
@@ -34,7 +31,6 @@ describe('PropertyService', () => {
     }).compile();
 
     service = module.get<PropertyService>(PropertyService);
-    repo = module.get<Repository<Property>>(getRepositoryToken(Property));
   });
 
   afterEach(() => {
@@ -42,190 +38,100 @@ describe('PropertyService', () => {
   });
 
   const createSampleProperties = (count: number): Property[] => {
-    return Array.from({ length: count }, (_, i) => ({
-      id: `test-id-${i}`,
-      title: `Property ${i}`,
-      description: 'Test property',
-      price: 100000 + i * 10000,
-      city: 'Houston',
-      address: `123 Test St`,
-      bedrooms: 3,
-      bathrooms: 2,
-      areaSqm: 150,
-      isAvailable: true,
-      isDeleted: false,
-      deletedAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })) as Property[];
+    return Array.from({ length: count }, (_, i) => {
+      const prop = new Property();
+      prop.id = `019ddfe0-${String(i).padStart(4, '0')}-0000-0000-00000000000${i}`;
+      prop.title = `Property ${i}`;
+      prop.description = 'Test property';
+      prop.price = 100000 + i * 10000;
+      prop.city = 'Houston';
+      prop.address = '123 Test St';
+      prop.bedrooms = 3;
+      prop.bathrooms = 2;
+      prop.areaSqm = 150;
+      prop.isAvailable = true;
+      prop.isDeleted = false;
+      prop.deletedAt = null;
+      prop.createdAt = new Date();
+      prop.updatedAt = new Date();
+      return prop;
+    });
   };
 
   describe('findAll', () => {
-    it('should return paginated results with default params', async () => {
+    it('should return first page with limit items', async () => {
       const data = createSampleProperties(10);
-      mockQb.getManyAndCount.mockResolvedValue([data, 50]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
+      mockQb.getMany.mockResolvedValue(data);
 
-      const result = await service.findAll({ page: 1, limit: 10 });
+      const result = await service.findAll({ limit: 10 });
 
       expect(result.data).toHaveLength(10);
-      expect(result.meta).toEqual({
-        total: 50,
-        page: 1,
-        limit: 10,
-        totalPages: 5,
+      expect(result.meta.hasMore).toBe(false);
+      expect(result.meta.nextCursor).toBeUndefined();
+    });
+
+    it('should return hasMore=true when extra item exists', async () => {
+      const data = createSampleProperties(11);
+      mockQb.getMany.mockResolvedValue(data);
+
+      const result = await service.findAll({ limit: 10 });
+
+      expect(result.data).toHaveLength(10);
+      expect(result.meta.hasMore).toBe(true);
+      expect(result.meta.nextCursor).toBe(data[9].id);
+    });
+
+    it('should use cursor to fetch next page', async () => {
+      const cursor = 'test-cursor-id';
+      mockQb.getMany.mockResolvedValue([]);
+
+      await service.findAll({ limit: 10, cursor });
+
+      expect(mockQb.andWhere).toHaveBeenCalledWith('property.id < :cursor', {
+        cursor,
       });
     });
 
-    it('should apply correct pagination for page 2', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 50]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
+    it('should request limit + 1 items for hasMore detection', async () => {
+      mockQb.getMany.mockResolvedValue([]);
 
-      await service.findAll({ page: 2, limit: 10 });
+      await service.findAll({ limit: 10 });
 
-      expect(mockQb.skip).toHaveBeenCalledWith(10);
-      expect(mockQb.take).toHaveBeenCalledWith(10);
+      expect(mockQb.take).toHaveBeenCalledWith(11);
     });
 
-    it('should order results by price descending', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 0]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
+    it('should order by price DESC then id DESC for stable pagination', async () => {
+      mockQb.getMany.mockResolvedValue([]);
 
-      await service.findAll({ page: 1, limit: 10 });
+      await service.findAll({ limit: 10 });
 
       expect(mockQb.orderBy).toHaveBeenCalledWith('property.price', 'DESC');
+      expect(mockQb.addOrderBy).toHaveBeenCalledWith('property.id', 'DESC');
     });
 
-    it('should filter by minimum price', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 5]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
-
-      await service.findAll({ page: 1, limit: 10, minPrice: 200000 });
-
-      expect(mockQb.andWhere).toHaveBeenCalledWith(
-        expect.stringContaining('property.price >= :minPrice'),
-        expect.objectContaining({ minPrice: 200000 }),
-      );
-    });
-
-    it('should filter by maximum price', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 3]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
-
-      await service.findAll({ page: 1, limit: 10, maxPrice: 500000 });
-
-      expect(mockQb.andWhere).toHaveBeenCalledWith(
-        expect.stringContaining('property.price <= :maxPrice'),
-        expect.objectContaining({ maxPrice: 500000 }),
-      );
-    });
-
-    it('should filter by city with case-insensitive match', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 10]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
-
-      await service.findAll({ page: 1, limit: 10, city: 'Houston' });
-
-      expect(mockQb.andWhere).toHaveBeenCalledWith(
-        expect.stringContaining('property.city ILIKE :city'),
-        expect.objectContaining({ city: '%Houston%' }),
-      );
-    });
-
-    it('should filter by minimum bedrooms', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 15]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
-
-      await service.findAll({ page: 1, limit: 10, minBedrooms: 4 });
-
-      expect(mockQb.andWhere).toHaveBeenCalledWith(
-        expect.stringContaining('property.bedrooms >= :minBedrooms'),
-        expect.objectContaining({ minBedrooms: 4 }),
-      );
-    });
-
-    it('should filter by minimum area', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 8]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
-
-      await service.findAll({ page: 1, limit: 10, minAreaSqm: 100 });
-
-      expect(mockQb.andWhere).toHaveBeenCalledWith(
-        expect.stringContaining('property.area_sqm >= :minAreaSqm'),
-        expect.objectContaining({ minAreaSqm: 100 }),
-      );
-    });
-
-    it('should filter by maximum area', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 6]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
-
-      await service.findAll({ page: 1, limit: 10, maxAreaSqm: 300 });
-
-      expect(mockQb.andWhere).toHaveBeenCalledWith(
-        expect.stringContaining('property.area_sqm <= :maxAreaSqm'),
-        expect.objectContaining({ maxAreaSqm: 300 }),
-      );
-    });
-
-    it('should filter by availability', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 20]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
-
-      await service.findAll({ page: 1, limit: 10, isAvailable: true });
-
-      expect(mockQb.andWhere).toHaveBeenCalledWith(
-        expect.stringContaining('property.is_available = :isAvailable'),
-        expect.objectContaining({ isAvailable: true }),
-      );
-    });
-
-    it('should combine multiple filters with AND operator', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 5]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
+    it('should apply filters along with cursor', async () => {
+      mockQb.getMany.mockResolvedValue([]);
 
       await service.findAll({
-        page: 1,
-        limit: 10,
-        minPrice: 100000,
+        limit: 5,
+        minPrice: 200000,
         city: 'Houston',
-        minBedrooms: 3,
-        operator: 'AND',
+        cursor: 'test-cursor',
       });
 
-      const andWhereCalls = (mockQb.andWhere as jest.Mock).mock.calls;
-      const filterCall = andWhereCalls.find((call: any[]) =>
-        call[0].includes('property.price'),
+      expect(mockQb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('property.price'),
+        expect.any(Object),
       );
-
-      expect(filterCall[0]).toContain('AND');
-    });
-
-    it('should combine multiple filters with OR operator', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 5]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
-
-      await service.findAll({
-        page: 1,
-        limit: 10,
-        city: 'Houston',
-        minBedrooms: 3,
-        operator: 'OR',
+      expect(mockQb.andWhere).toHaveBeenCalledWith('property.id < :cursor', {
+        cursor: 'test-cursor',
       });
-
-      const andWhereCalls = (mockQb.andWhere as jest.Mock).mock.calls;
-      const filterCall = andWhereCalls.find((call: any[]) =>
-        call[0].includes('property.city'),
-      );
-
-      expect(filterCall[0]).toContain('OR');
     });
 
     it('should always exclude deleted properties', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 10]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
+      mockQb.getMany.mockResolvedValue([]);
 
-      await service.findAll({ page: 1, limit: 10 });
+      await service.findAll({ limit: 10 });
 
       expect(mockQb.where).toHaveBeenCalledWith(
         'property.is_deleted = :isDeleted',
@@ -233,24 +139,14 @@ describe('PropertyService', () => {
       );
     });
 
-    it('should calculate totalPages correctly', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 95]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
+    it('should return empty data when no results found', async () => {
+      mockQb.getMany.mockResolvedValue([]);
 
-      const result = await service.findAll({ page: 1, limit: 10 });
-
-      expect(result.meta.totalPages).toBe(10);
-    });
-
-    it('should return empty array when no results found', async () => {
-      mockQb.getManyAndCount.mockResolvedValue([[], 0]);
-      mockRepo.createQueryBuilder.mockReturnValue(mockQb);
-
-      const result = await service.findAll({ page: 1, limit: 10 });
+      const result = await service.findAll({ limit: 10 });
 
       expect(result.data).toEqual([]);
-      expect(result.meta.total).toBe(0);
-      expect(result.meta.totalPages).toBe(0);
+      expect(result.meta.hasMore).toBe(false);
+      expect(result.meta.nextCursor).toBeUndefined();
     });
   });
 });
