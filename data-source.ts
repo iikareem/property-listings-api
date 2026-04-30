@@ -8,6 +8,6 @@ export default new DataSource({
   password: process.env.DATABASE_PASSWORD || 'postgres',
   database: process.env.DATABASE_NAME || 'property_listings',
   entities: ['src/**/*.entity.ts'],
-  migrations: ['src/migrations/*.ts'],
+  migrations: ['migrations/*.ts'],
   synchronize: false,
 });

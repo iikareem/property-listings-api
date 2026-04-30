@@ -20,5 +20,6 @@ import { Property } from '../property/entities/property.entity';
       }),
     }),
   ],
+  exports: [TypeOrmModule],
 })
 export class DatabaseModule {}

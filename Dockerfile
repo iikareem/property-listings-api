@@ -7,17 +7,11 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-
 FROM node:22-alpine
-RUN apk add --no-cache curl
-
 WORKDIR /app
 
 COPY --from=builder /app/ ./
 
-COPY docker-entrypoint.sh ./
-RUN chmod +x docker-entrypoint.sh
-
 EXPOSE 3000
 
-CMD ["sh", "./docker-entrypoint.sh"]
+CMD ["sh", "-c", "node_modules/.bin/ts-node --transpile-only -r tsconfig-paths/register node_modules/typeorm/cli.js migration:run -d data-source.ts && node_modules/.bin/ts-node --transpile-only -r tsconfig-paths/register seeds/seeder.ts && node dist/main"]

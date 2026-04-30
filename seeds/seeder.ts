@@ -1,9 +1,9 @@
 import { v7 as uuidv7 } from 'uuid';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { AppModule } from '../src/app.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Property } from './property/entities/property.entity';
+import { Property } from '../src/property/entities/property.entity';
 import { faker } from '@faker-js/faker';
 
 const BATCH_SIZE = 1000;
@@ -24,9 +24,7 @@ const CITIES = [
 
 async function seed() {
   const app = await NestFactory.createApplicationContext(AppModule);
-  const propertyRepo = app.get<Repository<Property>>(
-    getRepositoryToken(Property),
-  );
+  const propertyRepo = app.get<Repository<Property>>(getRepositoryToken(Property));
 
   console.log(`Seeding ${TOTAL_RECORDS} properties...`);
 
@@ -49,9 +47,7 @@ async function seed() {
     }
 
     await propertyRepo.save(properties);
-    console.log(
-      `Inserted ${Math.min(i + BATCH_SIZE, TOTAL_RECORDS)} / ${TOTAL_RECORDS} records`,
-    );
+    console.log(`Inserted ${Math.min(i + BATCH_SIZE, TOTAL_RECORDS)} / ${TOTAL_RECORDS} records`);
   }
 
   console.log('Seeding completed!');
