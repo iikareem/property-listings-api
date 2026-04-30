@@ -11,7 +11,7 @@ export class PropertyController {
 
   @Get()
   @ApiOperation({
-    summary: 'Retrieve property listings with filters and pagination',
+    summary: 'Retrieve property listings with filters and cursor pagination',
   })
   @ApiQuery({ name: 'minPrice', required: false, type: Number })
   @ApiQuery({ name: 'maxPrice', required: false, type: Number })
@@ -20,8 +20,8 @@ export class PropertyController {
   @ApiQuery({ name: 'minAreaSqm', required: false, type: Number })
   @ApiQuery({ name: 'maxAreaSqm', required: false, type: Number })
   @ApiQuery({ name: 'isAvailable', required: false, type: Boolean })
+  @ApiQuery({ name: 'cursor', required: false, type: String })
   @ApiQuery({ name: 'operator', required: false, enum: ['AND', 'OR'] })
-  @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   async findAll(
     @Query() query: GetPropertiesQuery,
