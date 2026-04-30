@@ -1,6 +1,7 @@
+import { v7 as uuidv7 } from 'uuid';
 import {
   Entity,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   Column,
   CreateDateColumn,
   UpdateDateColumn,
@@ -8,8 +9,8 @@ import {
 
 @Entity('properties')
 export class Property {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryColumn('uuid')
+  id: string = uuidv7();
 
   @Column()
   title: string;
