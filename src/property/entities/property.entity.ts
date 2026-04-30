@@ -42,8 +42,14 @@ export class Property {
   })
   areaSqm: number;
 
-  @Column({ type: 'boolean', default: true })
+  @Column({ name: 'is_available', type: 'boolean', default: true })
   isAvailable: boolean;
+
+  @Column({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted: boolean;
+
+  @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
+  deletedAt: Date;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
