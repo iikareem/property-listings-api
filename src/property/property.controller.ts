@@ -5,7 +5,7 @@ import { GetPropertiesQuery } from './dtos/get-properties.dto';
 import { PropertiesPaginatedResponse } from './dtos/responses.dto';
 
 @ApiTags('properties')
-@Controller('properties')
+@Controller('v1/properties')
 export class PropertyController {
   constructor(private readonly propertyService: PropertyService) {}
 
