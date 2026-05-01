@@ -4,16 +4,23 @@ export interface CacheKeyParams {
 }
 
 export function buildCacheKey(params: CacheKeyParams): string {
-  const parts: string[] = [params.prefix];
+  const segments = [params.prefix];
 
-  const sortedKeys = Object.keys(params.filters).sort();
-
-  for (const key of sortedKeys) {
+  for (const key of sortedKeys(params.filters)) {
     const value = params.filters[key];
-    if (value !== undefined && value !== null && value !== '') {
-      parts.push(`${key}=${value}`);
+
+    if (isNotEmpty(value)) {
+      segments.push(`${key}=${value}`);
     }
   }
 
-  return parts.join(':');
+  return segments.join(':');
+}
+
+function sortedKeys(filters: Record<string, unknown>): string[] {
+  return Object.keys(filters).sort();
+}
+
+function isNotEmpty(value: string | number | boolean): boolean {
+  return value !== undefined && value !== null && value !== '';
 }
