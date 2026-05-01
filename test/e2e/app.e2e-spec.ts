@@ -48,7 +48,7 @@ describe('PropertyController (e2e)', () => {
     jest.clearAllMocks();
   });
 
-  describe('GET /properties', () => {
+  describe('GET /v1/properties', () => {
     it('should return paginated response with 200', async () => {
       mockQb.getMany.mockResolvedValueOnce([
         {
@@ -60,7 +60,7 @@ describe('PropertyController (e2e)', () => {
       ]);
 
       const response = await request(app.getHttpServer())
-        .get('/properties')
+        .get('/v1/properties')
         .expect(200);
 
       const body = response.body as {
@@ -81,7 +81,7 @@ describe('PropertyController (e2e)', () => {
       mockQb.getMany.mockResolvedValueOnce(items);
 
       const response = await request(app.getHttpServer())
-        .get('/properties?limit=10')
+        .get('/v1/properties?limit=10')
         .expect(200);
 
       const body = response.body as {
@@ -104,7 +104,7 @@ describe('PropertyController (e2e)', () => {
       ]);
 
       const response = await request(app.getHttpServer())
-        .get('/properties?cursor=item-10&limit=10')
+        .get('/v1/properties?cursor=item-10&limit=10')
         .expect(200);
 
       const body = response.body as {
