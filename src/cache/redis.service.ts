@@ -28,6 +28,7 @@ interface CacheEntry<T> {
 @Injectable()
 export class RedisService {
   private readonly lock = new CacheLock();
+  private readonly trackedKeys = new Set<string>();
 
   constructor(private readonly cache: CacheProxy) {}
 
@@ -52,13 +53,23 @@ export class RedisService {
 
       const data = await fetchFn();
       await this.store(key, data, ttlMs);
+      this.trackedKeys.add(key);
 
       return data;
     });
   }
 
   async invalidatePropertyList(): Promise<void> {
-    await this.cache.clear();
+    const keys = Array.from(this.trackedKeys);
+
+    for (const key of keys) {
+      try {
+        await this.cache.del(key);
+        this.trackedKeys.delete(key);
+      } catch {
+        continue;
+      }
+    }
   }
 
   private async store<T>(key: string, data: T, ttlMs: number): Promise<void> {
