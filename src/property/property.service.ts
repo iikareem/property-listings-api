@@ -1,39 +1,53 @@
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable } from '@nestjs/common';
-import type { Cache } from 'cache-manager';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { Property } from './entities/property.entity';
 import { GetPropertiesQuery } from './dtos/get-properties.dto';
 import { PropertiesPaginatedResponse } from './dtos/responses.dto';
 import { applyFilters } from './filters.utils';
+import { RedisService, type PropertyListCacheParams } from '../cache/redis.service';
 
 @Injectable()
 export class PropertyService {
-  private readonly CACHE_PREFIX = 'properties:list:';
-
   constructor(
     @InjectRepository(Property)
     private readonly propertyRepo: Repository<Property>,
-    @Inject(CACHE_MANAGER)
-    private readonly cache: Cache,
+    private readonly redisService: RedisService,
   ) {}
 
   async findAll(
     query: GetPropertiesQuery,
   ): Promise<PropertiesPaginatedResponse> {
-    const cacheKey = this.getCacheKey(query);
-    const cached =
-      await this.cache.get<PropertiesPaginatedResponse>(cacheKey);
+    const cacheParams = this.toCacheParams(query);
+    const cached = await this.redisService.getPropertyList(cacheParams);
 
     if (cached) {
-      return cached;
+      return cached.data as PropertiesPaginatedResponse;
     }
 
     const result = await this.fetchFromDb(query);
-    await this.cache.set(cacheKey, result);
+    await this.redisService.setPropertyList(cacheParams, result);
 
     return result;
+  }
+
+  async invalidateCache(): Promise<void> {
+    await this.redisService.invalidatePropertyList();
+  }
+
+  private toCacheParams(query: GetPropertiesQuery): PropertyListCacheParams {
+    return {
+      minPrice: query.minPrice,
+      maxPrice: query.maxPrice,
+      city: query.city,
+      minBedrooms: query.minBedrooms,
+      minAreaSqm: query.minAreaSqm,
+      maxAreaSqm: query.maxAreaSqm,
+      isAvailable: query.isAvailable,
+      cursor: query.cursor,
+      operator: query.operator,
+      limit: query.limit,
+    };
   }
 
   private async fetchFromDb(
@@ -68,28 +82,6 @@ export class PropertyService {
         limit,
       },
     };
-  }
-
-  async invalidateCache(): Promise<void> {
-    await this.cache.clear();
-  }
-
-  private getCacheKey(query: GetPropertiesQuery): string {
-    const params = new URLSearchParams();
-
-    if (query.minPrice) params.set('minPrice', String(query.minPrice));
-    if (query.maxPrice) params.set('maxPrice', String(query.maxPrice));
-    if (query.city) params.set('city', query.city);
-    if (query.minBedrooms) params.set('minBedrooms', String(query.minBedrooms));
-    if (query.minAreaSqm) params.set('minAreaSqm', String(query.minAreaSqm));
-    if (query.maxAreaSqm) params.set('maxAreaSqm', String(query.maxAreaSqm));
-    if (query.isAvailable !== undefined)
-      params.set('isAvailable', String(query.isAvailable));
-    if (query.cursor) params.set('cursor', query.cursor);
-    if (query.operator) params.set('operator', query.operator);
-    if (query.limit) params.set('limit', String(query.limit));
-
-    return `${this.CACHE_PREFIX}${params.toString()}`;
   }
 
   private buildQuery(query: GetPropertiesQuery): SelectQueryBuilder<Property> {
