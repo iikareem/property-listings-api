@@ -1,66 +1,60 @@
-import { Injectable } from '@nestjs/common';
-import type { CacheAdapter } from '../interfaces/cache-adapter.interface';
+import { Injectable, Logger, type LogLevel } from '@nestjs/common';
 import { CacheManagerAdapter } from '../adapters/cache-manager.adapter';
-import { Logger, type LogLevel } from '@nestjs/common';
+import type { CacheAdapter } from '../interfaces/cache-adapter.interface';
 
 const LOG_LEVEL: LogLevel = 'debug';
 
 @Injectable()
 export class CacheProxy implements CacheAdapter {
-  private readonly logger: Logger;
+  private readonly logger = new Logger(CacheProxy.name);
 
-  constructor(private readonly adapter: CacheManagerAdapter) {
-    this.logger = new Logger(CacheProxy.name);
-  }
+  constructor(private readonly adapter: CacheManagerAdapter) {}
 
   async get<T>(key: string): Promise<T | undefined> {
+    return this.timed(key, () => this.adapter.get<T>(key), 'GET');
+  }
+
+  async set<T>(key: string, value: T, ttl?: number): Promise<void> {
+    return this.timed(key, () => this.adapter.set(key, value, ttl), 'SET');
+  }
+
+  async del(key: string): Promise<void> {
+    return this.timed(key, () => this.adapter.del(key), 'DEL');
+  }
+
+  async clear(): Promise<void> {
+    return this.timed('all', () => this.adapter.clear(), 'CLEAR');
+  }
+
+  private async timed<T>(
+    key: string,
+    operation: () => Promise<T>,
+    action: string,
+  ): Promise<T> {
     const start = Date.now();
 
     try {
-      const result = await this.adapter.get<T>(key);
+      const result = await operation();
       const duration = Date.now() - start;
 
-      this.logger.log(
-        `Cache ${result !== undefined ? 'HIT' : 'MISS'} | key=${key} | ${duration}ms`,
-        LOG_LEVEL,
-      );
+      if (action === 'GET') {
+        this.logger.log(
+          `Cache ${result !== undefined ? 'HIT' : 'MISS'} | key=${key} | ${duration}ms`,
+          LOG_LEVEL,
+        );
+      } else {
+        this.logger.log(
+          `Cache ${action} | key=${key} | ${duration}ms`,
+          LOG_LEVEL,
+        );
+      }
 
       return result;
     } catch (error) {
       const duration = Date.now() - start;
       this.logger.error(
-        `Cache get failed | key=${key} | ${duration}ms | error=${error}`,
+        `Cache ${action} FAILED | key=${key} | ${duration}ms | ${error}`,
       );
-      throw error;
-    }
-  }
-
-  async set<T>(key: string, value: T, ttl?: number): Promise<void> {
-    try {
-      await this.adapter.set(key, value, ttl);
-      this.logger.log(`Cache SET | key=${key}`, LOG_LEVEL);
-    } catch (error) {
-      this.logger.error(`Cache set failed | key=${key} | error=${error}`);
-      throw error;
-    }
-  }
-
-  async del(key: string): Promise<void> {
-    try {
-      await this.adapter.del(key);
-      this.logger.log(`Cache DEL | key=${key}`, LOG_LEVEL);
-    } catch (error) {
-      this.logger.error(`Cache del failed | key=${key} | error=${error}`);
-      throw error;
-    }
-  }
-
-  async clear(): Promise<void> {
-    try {
-      await this.adapter.clear();
-      this.logger.log('Cache CLEAR | all keys', LOG_LEVEL);
-    } catch (error) {
-      this.logger.error(`Cache clear failed | error=${error}`);
       throw error;
     }
   }
