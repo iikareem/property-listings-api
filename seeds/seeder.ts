@@ -29,14 +29,14 @@ async function seed() {
   console.log(`Seeding ${TOTAL_RECORDS} properties...`);
 
   for (let i = 0; i < TOTAL_RECORDS; i += BATCH_SIZE) {
-    const properties: any[] = [];
+    const properties: Partial<Property>[] = [];
 
     for (let j = 0; j < BATCH_SIZE; j++) {
       properties.push({
         id: uuidv7(),
         title: faker.lorem.sentence({ min: 3, max: 8 }),
         description: faker.lorem.paragraph(),
-        price: faker.commerce.price({ min: 50000, max: 5000000 }),
+        price: parseFloat(faker.commerce.price({ min: 50000, max: 5000000 })),
         city: faker.helpers.arrayElement(CITIES),
         address: faker.location.streetAddress({ useFullAddress: true }),
         bedrooms: faker.number.int({ min: 1, max: 8 }),
