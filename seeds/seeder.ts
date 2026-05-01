@@ -7,7 +7,7 @@ import { Property } from '../src/property/entities/property.entity';
 import { faker } from '@faker-js/faker';
 
 const BATCH_SIZE = 1000;
-const TOTAL_RECORDS = 10000;
+const TOTAL_RECORDS = 100000;
 
 const CITIES = [
   'New York',
