@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { INestApplication } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { Property } from '../../src/property/entities/property.entity';
+import { RedisService } from '../../src/cache/redis.service';
 
 describe('PropertyController (e2e)', () => {
   let app: INestApplication;
@@ -22,10 +22,10 @@ describe('PropertyController (e2e)', () => {
     createQueryBuilder: jest.fn().mockReturnValue(mockQb),
   };
 
-  const mockCache = {
-    get: jest.fn().mockResolvedValue(undefined),
-    set: jest.fn().mockResolvedValue(undefined),
-    clear: jest.fn().mockResolvedValue(undefined),
+  const mockRedisService = {
+    getPropertyList: jest.fn().mockResolvedValue(undefined),
+    setPropertyList: jest.fn().mockResolvedValue(undefined),
+    invalidatePropertyList: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -34,8 +34,8 @@ describe('PropertyController (e2e)', () => {
     })
       .overrideProvider(getRepositoryToken(Property))
       .useValue(mockRepo)
-      .overrideProvider(CACHE_MANAGER)
-      .useValue(mockCache)
+      .overrideProvider(RedisService)
+      .useValue(mockRedisService)
       .compile();
 
     app = moduleFixture.createNestApplication();
