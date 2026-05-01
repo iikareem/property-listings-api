@@ -2,11 +2,13 @@ import {
   IsOptional,
   IsInt,
   Min,
+  Max,
   IsString,
   IsNumber,
   IsBoolean,
   IsIn,
   IsUUID,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -23,6 +25,7 @@ export class GetPropertiesQuery {
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   city?: string;
 
   @IsOptional()
@@ -57,6 +60,7 @@ export class GetPropertiesQuery {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(100)
   @Type(() => Number)
   limit: number = 10;
 }
