@@ -1,13 +1,13 @@
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 export class CacheLock {
-  private readonly locks = new Map<string, Promise<unknown>>();
+  private readonly locks = new Map<string, unknown>();
 
   async acquire<T>(key: string, fn: () => Promise<T>): Promise<T> {
-    const pending = this.locks.get(key);
+    const pending = this.locks.get(key) as Promise<T> | undefined;
 
     if (pending) {
-      return pending as Promise<T>;
+      return pending;
     }
 
     const promise = this.withTimeout(fn, key);
