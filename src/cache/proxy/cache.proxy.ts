@@ -52,8 +52,7 @@ export class CacheProxy implements CacheAdapter {
       return result;
     } catch (error) {
       const duration = Date.now() - start;
-      const message =
-        error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : String(error);
 
       this.logger.error(
         `Cache ${action} FAILED | key=${key} | ${duration}ms | ${message}`,
