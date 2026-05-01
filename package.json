@@ -26,6 +26,9 @@
   },
   "dependencies": {
     "@faker-js/faker": "^10.4.0",
+    "@keyv/redis": "^5.1.6",
+    "@keyv/valkey": "^1.0.11",
+    "@nestjs/cache-manager": "^3.1.2",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
@@ -33,6 +36,7 @@
     "@nestjs/swagger": "^11.4.2",
     "@nestjs/typeorm": "^11.0.1",
     "@types/uuid": "^10.0.0",
+    "cache-manager": "^7.2.8",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "pg": "^8.20.0",
