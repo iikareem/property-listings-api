@@ -27,6 +27,40 @@ services:
       timeout: 3s
       retries: 5
 
+  migrate:
+    build: .
+    container_name: property-listings-migrate
+    entrypoint: []
+    command: node_modules/.bin/ts-node --transpile-only -r tsconfig-paths/register node_modules/typeorm/cli.js migration:run -d data-source.ts
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: property_listings
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  seed:
+    build: .
+    container_name: property-listings-seed
+    entrypoint: []
+    command: node_modules/.bin/ts-node --transpile-only -r tsconfig-paths/register seeds/seeder.ts
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: property_listings
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   app:
     build: .
     container_name: property-listings-app
@@ -46,3 +80,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
