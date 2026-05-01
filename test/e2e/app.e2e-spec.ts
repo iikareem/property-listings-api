@@ -23,8 +23,9 @@ describe('PropertyController (e2e)', () => {
   };
 
   const mockRedisService = {
-    getPropertyList: jest.fn().mockResolvedValue(undefined),
-    setPropertyList: jest.fn().mockResolvedValue(undefined),
+    getPropertyList: jest
+      .fn()
+      .mockImplementation(async (_params, fetchFn) => fetchFn()),
     invalidatePropertyList: jest.fn().mockResolvedValue(undefined),
   };
 

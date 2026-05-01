@@ -22,7 +22,6 @@ describe('PropertyService', () => {
 
   const mockRedisService = {
     getPropertyList: jest.fn(),
-    setPropertyList: jest.fn(),
     invalidatePropertyList: jest.fn(),
   };
 
@@ -48,8 +47,8 @@ describe('PropertyService', () => {
     jest.clearAllMocks();
   });
 
-  const createSampleProperties = (count: number): Property[] => {
-    return Array.from({ length: count }, (_, i) => {
+  const createSampleProperties = (count: number): Property[] =>
+    Array.from({ length: count }, (_, i) => {
       const prop = new Property();
       prop.id = `019ddfe0-${String(i).padStart(4, '0')}-0000-0000-00000000000${i}`;
       prop.title = `Property ${i}`;
@@ -67,11 +66,15 @@ describe('PropertyService', () => {
       prop.updatedAt = new Date();
       return prop;
     });
-  };
+
+  const mockCacheMiss = () =>
+    mockRedisService.getPropertyList.mockImplementation(
+      async (_params, fetchFn) => fetchFn(),
+    );
 
   describe('findAll', () => {
     it('should return first page with limit items', async () => {
-      mockRedisService.getPropertyList.mockResolvedValue(undefined);
+      mockCacheMiss();
       const data = createSampleProperties(10);
       mockQb.getMany.mockResolvedValue(data);
 
@@ -83,7 +86,7 @@ describe('PropertyService', () => {
     });
 
     it('should return hasMore=true when extra item exists', async () => {
-      mockRedisService.getPropertyList.mockResolvedValue(undefined);
+      mockCacheMiss();
       const data = createSampleProperties(11);
       mockQb.getMany.mockResolvedValue(data);
 
@@ -95,19 +98,18 @@ describe('PropertyService', () => {
     });
 
     it('should use cursor to fetch next page', async () => {
-      mockRedisService.getPropertyList.mockResolvedValue(undefined);
-      const cursor = 'test-cursor-id';
+      mockCacheMiss();
       mockQb.getMany.mockResolvedValue([]);
 
-      await service.findAll({ limit: 10, cursor });
+      await service.findAll({ limit: 10, cursor: 'test-cursor' });
 
       expect(mockQb.andWhere).toHaveBeenCalledWith('property.id < :cursor', {
-        cursor,
+        cursor: 'test-cursor',
       });
     });
 
     it('should request limit + 1 items for hasMore detection', async () => {
-      mockRedisService.getPropertyList.mockResolvedValue(undefined);
+      mockCacheMiss();
       mockQb.getMany.mockResolvedValue([]);
 
       await service.findAll({ limit: 10 });
@@ -115,8 +117,8 @@ describe('PropertyService', () => {
       expect(mockQb.take).toHaveBeenCalledWith(11);
     });
 
-    it('should order by price DESC then id DESC for stable pagination', async () => {
-      mockRedisService.getPropertyList.mockResolvedValue(undefined);
+    it('should order by price DESC then id DESC', async () => {
+      mockCacheMiss();
       mockQb.getMany.mockResolvedValue([]);
 
       await service.findAll({ limit: 10 });
@@ -125,8 +127,8 @@ describe('PropertyService', () => {
       expect(mockQb.addOrderBy).toHaveBeenCalledWith('property.id', 'DESC');
     });
 
-    it('should apply filters along with cursor', async () => {
-      mockRedisService.getPropertyList.mockResolvedValue(undefined);
+    it('should apply filters with cursor', async () => {
+      mockCacheMiss();
       mockQb.getMany.mockResolvedValue([]);
 
       await service.findAll({
@@ -145,8 +147,8 @@ describe('PropertyService', () => {
       });
     });
 
-    it('should always exclude deleted properties', async () => {
-      mockRedisService.getPropertyList.mockResolvedValue(undefined);
+    it('should exclude deleted properties', async () => {
+      mockCacheMiss();
       mockQb.getMany.mockResolvedValue([]);
 
       await service.findAll({ limit: 10 });
@@ -157,8 +159,8 @@ describe('PropertyService', () => {
       );
     });
 
-    it('should return empty data when no results found', async () => {
-      mockRedisService.getPropertyList.mockResolvedValue(undefined);
+    it('should return empty data when no results', async () => {
+      mockCacheMiss();
       mockQb.getMany.mockResolvedValue([]);
 
       const result = await service.findAll({ limit: 10 });
@@ -168,23 +170,22 @@ describe('PropertyService', () => {
       expect(result.meta.nextCursor).toBeUndefined();
     });
 
-    it('should return cached result when available', async () => {
-      const cachedResult = {
+    it('should return cached result without fetching', async () => {
+      const cached = {
         data: createSampleProperties(5),
-        serializedAt: Date.now(),
-        ttl: 300_000,
+        meta: { hasMore: false, nextCursor: undefined, limit: 10 },
       };
-      mockRedisService.getPropertyList.mockResolvedValue(cachedResult);
+      mockRedisService.getPropertyList.mockResolvedValue(cached);
 
       const result = await service.findAll({ limit: 10 });
 
       expect(mockRedisService.getPropertyList).toHaveBeenCalled();
       expect(mockQb.getMany).not.toHaveBeenCalled();
-      expect(result).toEqual(cachedResult.data);
+      expect(result).toEqual(cached);
     });
 
-    it('should fetch from DB and store in cache on cache miss', async () => {
-      mockRedisService.getPropertyList.mockResolvedValue(undefined);
+    it('should fetch from DB on cache miss', async () => {
+      mockCacheMiss();
       const data = createSampleProperties(5);
       mockQb.getMany.mockResolvedValue(data);
 
@@ -192,7 +193,6 @@ describe('PropertyService', () => {
 
       expect(mockRedisService.getPropertyList).toHaveBeenCalled();
       expect(mockQb.getMany).toHaveBeenCalled();
-      expect(mockRedisService.setPropertyList).toHaveBeenCalled();
     });
   });
 
