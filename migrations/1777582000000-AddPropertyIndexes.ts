@@ -52,6 +52,6 @@ export class AddPropertyIndexes1777582000000 implements MigrationInterface {
     await queryRunner.query(`DROP INDEX IF EXISTS idx_properties_price`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_properties_bedrooms`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_properties_area_sqm`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_properties_city`);
+    await queryRunner.query(`DROP INDEX IF EXISTS idx_properties_city_trgm`);
   }
 }
