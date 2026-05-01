@@ -14,6 +14,10 @@ async function bootstrap() {
     }),
   );
 
+  app.getHttpAdapter().get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
+  });
+
   const config = new DocumentBuilder()
     .setTitle('Property Listings API')
     .setDescription('API for managing property listings')
