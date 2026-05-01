@@ -18,13 +18,14 @@ export const options = {
 
 export default function () {
   const tests = [
-    { name: 'all properties', url: 'http://localhost:3000/properties' },
-    { name: 'filtered by price', url: 'http://localhost:3000/properties?minPrice=100000&maxPrice=500000' },
-    { name: 'filtered by city', url: 'http://localhost:3000/properties?city=Houston' },
-    { name: 'filtered by bedrooms', url: 'http://localhost:3000/properties?minBedrooms=3' },
-    { name: 'paginated', url: 'http://localhost:3000/properties?limit=20' },
-    { name: 'OR operator', url: 'http://localhost:3000/properties?city=Austin&minPrice=200000&operator=OR' },
-    { name: 'combined filters', url: 'http://localhost:3000/properties?city=Dallas&minBedrooms=2&minPrice=150000&maxPrice=800000' },
+    { name: 'all properties', url: 'http://localhost:3000/v1/properties' },
+    { name: 'filtered by price', url: 'http://localhost:3000/v1/properties?minPrice=100000&maxPrice=500000' },
+    { name: 'filtered by city', url: 'http://localhost:3000/v1/properties?city=Houston' },
+    { name: 'filtered by bedrooms', url: 'http://localhost:3000/v1/properties?minBedrooms=3' },
+    { name: 'paginated', url: 'http://localhost:3000/v1/properties?limit=20' },
+    { name: 'OR operator', url: 'http://localhost:3000/v1/properties?city=Austin&minPrice=200000&operator=OR' },
+    { name: 'combined filters', url: 'http://localhost:3000/v1/properties?city=Dallas&minBedrooms=2&minPrice=150000&maxPrice=800000' },
+    { name: 'health check', url: 'http://localhost:3000/health' },
   ];
 
   const test = tests[Math.floor(Math.random() * tests.length)];
