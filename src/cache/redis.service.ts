@@ -62,14 +62,12 @@ export class RedisService {
   async invalidatePropertyList(): Promise<void> {
     const keys = Array.from(this.trackedKeys);
 
-    for (const key of keys) {
-      try {
+    await Promise.allSettled(
+      keys.map(async (key) => {
         await this.cache.del(key);
         this.trackedKeys.delete(key);
-      } catch {
-        continue;
-      }
-    }
+      }),
+    );
   }
 
   private async store<T>(key: string, data: T, ttlMs: number): Promise<void> {
