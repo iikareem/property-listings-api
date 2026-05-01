@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CacheProxy } from './proxy/cache.proxy';
+import { CacheLock } from './cache-lock';
 import { buildCacheKey, type CacheKeyParams } from './cache-key.builder';
 
 const PROPERTY_LIST_PREFIX = 'property:list';
@@ -26,22 +27,42 @@ interface CacheEntry<T> {
 
 @Injectable()
 export class RedisService {
+  private readonly lock = new CacheLock();
+
   constructor(private readonly cache: CacheProxy) {}
 
-  async getPropertyList(
+  async getPropertyList<T>(
     params: PropertyListCacheParams,
-  ): Promise<CacheEntry<unknown> | undefined> {
-    const key = this.buildPropertyListKey(params);
-    return this.cache.get<CacheEntry<unknown>>(key);
+    fetchFn: () => Promise<T>,
+    ttlMs = DEFAULT_TTL_MS,
+  ): Promise<T> {
+    const key = this.buildKey(params);
+    const cached = await this.cache.get<CacheEntry<T>>(key);
+
+    if (cached) {
+      return cached.data;
+    }
+
+    return this.lock.acquire(key, async () => {
+      const doubleCheck = await this.cache.get<CacheEntry<T>>(key);
+
+      if (doubleCheck) {
+        return doubleCheck.data;
+      }
+
+      const data = await fetchFn();
+      await this.store(key, data, ttlMs);
+
+      return data;
+    });
   }
 
-  async setPropertyList(
-    params: PropertyListCacheParams,
-    data: unknown,
-    ttlMs = DEFAULT_TTL_MS,
-  ): Promise<void> {
-    const key = this.buildPropertyListKey(params);
-    const entry: CacheEntry<unknown> = {
+  async invalidatePropertyList(): Promise<void> {
+    await this.cache.clear();
+  }
+
+  private async store<T>(key: string, data: T, ttlMs: number): Promise<void> {
+    const entry: CacheEntry<T> = {
       data,
       serializedAt: Date.now(),
       ttl: ttlMs,
@@ -50,12 +71,17 @@ export class RedisService {
     await this.cache.set(key, entry, ttlMs);
   }
 
-  async invalidatePropertyList(): Promise<void> {
-    await this.cache.clear();
+  private buildKey(params: PropertyListCacheParams): string {
+    return buildCacheKey({
+      prefix: PROPERTY_LIST_PREFIX,
+      filters: this.toFilters(params),
+    });
   }
 
-  private buildPropertyListKey(params: PropertyListCacheParams): string {
-    const filters: CacheKeyParams['filters'] = {};
+  private toFilters(
+    params: PropertyListCacheParams,
+  ): CacheKeyParams['filters'] {
+    const filters: Record<string, string | number | boolean> = {};
 
     if (params.minPrice) filters.minPrice = params.minPrice;
     if (params.maxPrice) filters.maxPrice = params.maxPrice;
@@ -69,6 +95,6 @@ export class RedisService {
     if (params.operator) filters.operator = params.operator;
     if (params.limit) filters.limit = params.limit;
 
-    return buildCacheKey({ prefix: PROPERTY_LIST_PREFIX, filters });
+    return filters;
   }
 }
