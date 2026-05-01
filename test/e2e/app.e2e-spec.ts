@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { INestApplication } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import request from 'supertest';
@@ -21,12 +22,20 @@ describe('PropertyController (e2e)', () => {
     createQueryBuilder: jest.fn().mockReturnValue(mockQb),
   };
 
+  const mockCache = {
+    get: jest.fn().mockResolvedValue(undefined),
+    set: jest.fn().mockResolvedValue(undefined),
+    clear: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(getRepositoryToken(Property))
       .useValue(mockRepo)
+      .overrideProvider(CACHE_MANAGER)
+      .useValue(mockCache)
       .compile();
 
     app = moduleFixture.createNestApplication();
