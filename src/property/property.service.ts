@@ -5,7 +5,10 @@ import { Property } from './entities/property.entity';
 import { GetPropertiesQuery } from './dtos/get-properties.dto';
 import { PropertiesPaginatedResponse } from './dtos/responses.dto';
 import { applyFilters } from './filters.utils';
-import { RedisService, type PropertyListCacheParams } from '../cache/redis.service';
+import {
+  RedisService,
+  type PropertyListCacheParams,
+} from '../cache/redis.service';
 
 @Injectable()
 export class PropertyService {
@@ -18,17 +21,9 @@ export class PropertyService {
   async findAll(
     query: GetPropertiesQuery,
   ): Promise<PropertiesPaginatedResponse> {
-    const cacheParams = this.toCacheParams(query);
-    const cached = await this.redisService.getPropertyList(cacheParams);
-
-    if (cached) {
-      return cached.data as PropertiesPaginatedResponse;
-    }
-
-    const result = await this.fetchFromDb(query);
-    await this.redisService.setPropertyList(cacheParams, result);
-
-    return result;
+    return this.redisService.getPropertyList(this.toCacheParams(query), () =>
+      this.fetchFromDb(query),
+    );
   }
 
   async invalidateCache(): Promise<void> {
@@ -54,31 +49,27 @@ export class PropertyService {
     query: GetPropertiesQuery,
   ): Promise<PropertiesPaginatedResponse> {
     const { cursor, limit } = query;
-    const hasCursor = cursor !== undefined;
-    const takeCount = limit + 1;
 
     const qb = this.buildQuery(query);
-    qb.take(takeCount);
+    qb.take(limit + 1);
 
-    if (hasCursor) {
+    if (cursor) {
       qb.andWhere('property.id < :cursor', { cursor });
     }
 
     const data = await qb.getMany();
-
     const hasMore = data.length > limit;
+
     if (hasMore) {
       data.pop();
     }
-
-    const nextCursor =
-      hasMore && data.length > 0 ? data[data.length - 1].id : undefined;
 
     return {
       data,
       meta: {
         hasMore,
-        nextCursor,
+        nextCursor:
+          hasMore && data.length > 0 ? data[data.length - 1].id : undefined,
         limit,
       },
     };
