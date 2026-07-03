@@ -24,19 +24,7 @@ Docker Compose orchestrates the startup sequence:
 
 API available at `http://localhost:3000/v1`. Swagger docs at `http://localhost:3000/docs`.
 
-## Assignment Goal
-
-Build an API endpoint to retrieve property listings from a database with the following features:
-
-- Filter properties by price range
-- Filter by city
-- Filter by minimum number of bedrooms
-- Sort results by price (descending)
-- Implement pagination
-
-## Beyond the Requirements
-
-This implementation goes significantly beyond the baseline requirements with production-ready features:
+## Features
 
 ### Architecture & Design Patterns
 
@@ -82,7 +70,7 @@ This implementation goes significantly beyond the baseline requirements with pro
 - **Health checks** on all services — app only starts after seed completes
 - **No persistent volumes** — clean state on restart, ideal for development
 
-### Load Test Results
+## Load Test Results
 
 Tested locally with **k6** (50 virtual users, 50 seconds, 100K records in database):
 
@@ -92,7 +80,7 @@ Tested locally with **k6** (50 virtual users, 50 seconds, 100K records in databa
      scenarios: (100.00%) 1 scenario, 50 max VUs, 50s duration
 ```
 
-#### Performance Dashboard
+### Performance Dashboard
 
 | Metric | Result |
 |--------|--------|
@@ -106,7 +94,7 @@ Tested locally with **k6** (50 virtual users, 50 seconds, 100K records in databa
 | **Error Rate** | 0.00% |
 | **All Checks Passed** | 100% (8,331/8,331) |
 
-#### Response Time Distribution
+### Response Time Distribution
 
 ```
   0-2ms  ████ 5% of requests
@@ -116,7 +104,7 @@ Tested locally with **k6** (50 virtual users, 50 seconds, 100K records in databa
 20-50ms  █ 2% of requests
 ```
 
-#### Thresholds (Pass/Fail Criteria)
+### Thresholds (Pass/Fail Criteria)
 
 ```
   █ THRESHOLDS
@@ -127,7 +115,7 @@ Tested locally with **k6** (50 virtual users, 50 seconds, 100K records in databa
     ✓ 'p(95)<500' p(95)=6.58ms
 ```
 
-#### Throughput Over Time (50 VUs)
+### Throughput Over Time (50 VUs)
 
 ```
 50 ┤                              ┌─────────────── 50 users
@@ -146,7 +134,7 @@ Tested locally with **k6** (50 virtual users, 50 seconds, 100K records in databa
             Load      Load
 ```
 
-#### Why Cache Makes the Difference
+### Why Cache Makes the Difference
 
 The cache-aside pattern means only the **first request** for each unique filter combination hits the database. Subsequent requests are served from Redis in <5ms:
 
